@@ -1,4 +1,7 @@
-﻿namespace FuelTracker
+﻿using System.Diagnostics.Tracing;
+using System.Runtime.InteropServices;
+
+namespace FuelTracker
 {
     internal class Program
     {
@@ -115,12 +118,12 @@
 
                     case "2":
                         Console.WriteLine("Otvoren izbornik: Brisanje korisnika");
-                        Wait();
+                        UserDeletion();
                         break;
 
                     case "3":
                         Console.WriteLine("Otvoren izbornik: Uređivanje korisnika");
-                        Wait();
+                        UserEditing();
                         break;
 
                     case "4":
@@ -141,62 +144,362 @@
 
         static void EnterNewUser()
         {
-            Console.Clear();
-            Console.WriteLine("Unos novog korisnika");
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("UNESI NOVOG KORISNIKA");
 
-            Console.Write("Unesite ime: ");
+                Console.Write("Unesite ime: ");
+                string firstName = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(firstName))
+                {
+                    Console.WriteLine("Niste unjeli ništa!");
+                    Wait();
+                    return;
+                }
+
+                Console.Write("Unesite prezime: ");
+                string lastName = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(lastName))
+                {
+                    Console.WriteLine("Niste unjeli ništa");
+                    Wait();
+                    return;
+                }
+
+                Console.Write("Unesite datum rođenja (YYYY-MM-DD): ");
+                string dateInput = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(dateInput))
+                {
+                    Console.WriteLine("Niste unjeli ništa!");
+                    Wait();
+                    return;
+                }
+                DateTime birthDate;
+                if (!DateTime.TryParse(dateInput, out birthDate))
+                {
+                    Console.WriteLine("Neispravan datum!");
+                    Wait();
+                    return;
+
+                }
+                int age = DateTime.Now.Year - birthDate.Year;
+
+                if (birthDate > DateTime.Now.AddYears(-age))
+                {
+                    age--;
+                }
+
+                if (age < 18)
+                {
+                    Console.WriteLine("Korisnik mora biti stariji od 18 godina!");
+                    Wait();
+                    continue;
+                }
+
+                Console.WriteLine("Jeste li sigurni da želite dodati tog korisnika (Y/N) ?");
+                string choice = Console.ReadLine();
+
+                switch(choice)
+                {
+                    case "Y":
+                        AddUser(firstName, lastName, birthDate);
+
+                        Console.WriteLine("Korisnik uspješno dodan!");
+                        return;
+                    case "N":
+                        Console.WriteLine("Korisnik nije dodan!");
+                        continue;
+
+                }
+
+            }
+            
+        }
+
+        static void UserDeletion()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("BRISANJE PUTOVANJA");
+                Console.WriteLine("1 - Brisanje prema imenu i prezimenu");
+                Console.WriteLine("2 - Brisanje prema ID-u");
+                Console.WriteLine("0 - Povratak na Korisnici menu");
+                Console.Write("Odabir: ");
+
+                string choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        Console.WriteLine("Otvoren izbornik: Brisanje prema imenu i prezimenu");
+                        UserDeletionNameSurname();
+                        break;
+
+                    case "2":
+                        Console.WriteLine("Otvoren izbornik Brisanje prema ID-u");
+                        UserDeletionID();
+                        break;
+
+                    case "0":
+                        Console.WriteLine("Otvoren izbornik Korisnici");
+                        return;
+                        break;
+
+                    default:
+                        Console.WriteLine("Neispravan Unos!");
+                        Wait();
+                        break;
+
+                }
+            }
+            
+        }
+
+        static void UserDeletionNameSurname()
+        {
+            Console.Clear();
+            Console.WriteLine("BRISANJE KORISNIKA PO IMENU I PREZIMENU");
+            Console.Write("Unesite ime korisnika:");
             string firstName = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(firstName))
             {
-                Console.WriteLine("Ime ne smije biti prazno!");
+                Console.WriteLine("Prazno ime, vraćam se u izbornik...");
                 Wait();
-                return;
+                return; 
             }
 
-            Console.Write("Unesite prezime: ");
+            Console.Write("Unesite prezime korisnika: ");
             string lastName = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(lastName))
             {
-                Console.WriteLine("Prezime ne smije biti prazno!");
+                Console.WriteLine("Prazno prezime, vraćam se u izbornik...");
+                Wait();
+                return; 
+            }
+
+            var user = users.Find(u =>
+                (string)u["firstName"] == firstName &&
+                (string)u["lastName"] == lastName
+            );
+
+            if (user == null)
+            {
+                Console.WriteLine("Korisnik nije pronađen!");
                 Wait();
                 return;
             }
 
-            Console.Write("Unesite datum rođenja (YYYY-MM-DD): ");
-            string dateInput = Console.ReadLine();
-            DateTime birthDate;
-            if (!DateTime.TryParse(dateInput, out birthDate))
+            Console.Write($"Jeste li sigurni da želite obrisati korisnika {firstName} {lastName}? (Y/N): ");
+            string confirm = Console.ReadLine().ToUpper();
+
+            if (confirm == "Y")
             {
-                Console.WriteLine("Neispravan datum!");
-                Wait();
+                users.Remove(user);
+                Console.WriteLine("Korisnik je uspješno obrisan!");
+            }
+            else
+            {
+                Console.WriteLine("Brisanje otkazano.");
+            }
+
+            Wait();
+        }
+        static void UserDeletionID()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("BRISANJE KORISNIKA PO ID-U");
+                Console.WriteLine("Unesite ID korisnika: ");
+                string input = Console.ReadLine();
+                int ID;
+
+                if (!int.TryParse(input, out ID))
+                {
+                    Console.WriteLine("Neispravan unos! ID mora biti broj.");
+                    Wait();
+                    return;
+                }
+                var user = users.Find(u => (int)u["id"] == ID);
+
+                if (user == null)
+                {
+                    Console.WriteLine($"Korisnik s ID {ID} ne postoji!");
+                    Wait();
+                    return;
+                }
+
+                Console.WriteLine($"Korisnik {user["firstName"]} {user["lastName"]} pronađen!");
+
+                users.Remove(user);
                 return;
             }
-            int age = DateTime.Now.Year - birthDate.Year;
-
-            if (birthDate > DateTime.Now.AddYears(-age))
+        }
+      
+        static void UserEditing()
+        {
+            while(true) 
             {
-                age--;
+                Console.Clear();
+                Console.WriteLine("UREĐIVANJE PODATAKA O KORISNIKU");
+                Console.WriteLine("1 - Uredite korisnika prema ID-u");
+                Console.WriteLine("0 - Povratak na Korisnici menu");
+                string choice = Console.ReadLine();
+                switch (choice) 
+                {
+                    case "1":
+
+                        EditingInterface();
+                        break;
+
+                    case "0":
+                        return;
+                        break;
+
+                    default:
+                        Console.WriteLine("Neispravan unos!");
+                        Wait();
+                        break;
+
+                }
+
             }
 
-            if (age < 18)
+            
+
+
+
+        }
+        static void EditingInterface()
+        {
+            while(true)
             {
-                Console.WriteLine("Korisnik mora biti stariji od 18 godina!");
-                Wait();
+                Console.Clear();
+                Console.WriteLine("Napiši ID korisnika čije podatke želiš urediti:");
+                string input = Console.ReadLine();
+                int ID;
+
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    Console.WriteLine("Prazan ID vračam se u Menu za Uređivanje");
+                    Wait();
+                    return;
+                }
+
+                if (!int.TryParse(input, out ID))
+                {
+                    Console.WriteLine("Neispravan unos! ID mora biti broj.");
+                    Wait();
+                    return;
+                }
+                var user = users.Find(u => (int)u["id"] == ID);
+
+                if (user == null)
+                {
+                    Console.WriteLine($"Korisnik s ID {ID} ne postoji!");
+                    Wait();
+                    return;
+                }
+
+                EditingInterfaceSecondLayer(user);
                 return;
+
             }
+        }
+        static void EditingInterfaceSecondLayer(Dictionary<string, object> user)
+        {
+            while(true)
+            {
+                Console.Clear();
+                Console.WriteLine("1 - Promjeni ime korisnika");
+                Console.WriteLine("2 - Promjeni prezime korisnika");
+                Console.WriteLine("3 - Promjeni datum rođenja korisnika");
+                Console.WriteLine("0 - vrati se u upis ID-a korisnika");
+                string choice = Console.ReadLine();
+
+                switch(choice)
+                {
+                    case "1":
+                        Console.Write("Unesite novo ime: ");
+                        string newFirstName = Console.ReadLine();
+                        if (!string.IsNullOrWhiteSpace(newFirstName))
+                        {
+                            user["firstName"] = newFirstName;
+                            Console.WriteLine("Ime je uspješno promijenjeno!");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Ime ne smije biti prazno!");
+                        }
+                        break;
+                    case "2":
+                        Console.Write("Unesite novo prezime: ");
+                        string newSurname = Console.ReadLine();
+                        if (!string.IsNullOrWhiteSpace(newSurname))
+                        {
+                            user["lastname"] = newSurname;
+                            Console.WriteLine("Ime je uspješno promijenjeno!");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Ime ne smije biti prazno!");
+                        }
+                        break;
+                    case "3":
+                        Console.Write("Unesite novi datum rođenja (YYYY-MM-DD): ");
+                        string dateInput = Console.ReadLine();
+                        DateTime newBirthDate;
+
+                        if (!DateTime.TryParse(dateInput, out newBirthDate))
+                        {
+                            Console.WriteLine("Neispravan format datuma!");
+                            Wait();
+                            break;
+                        }
+
+                        if (newBirthDate > DateTime.Now)
+                        {
+                            Console.WriteLine("Datum rođenja ne može biti u budućnosti!");
+                            Wait();
+                            break;
+                        }
+
+                        if (newBirthDate > DateTime.Now.AddYears(-18))
+                        {
+                            Console.WriteLine("Korisnik mora imati najmanje 18 godina!");
+                            Wait();
+                            break;
+                        }
+
+                        user["birthDate"] = newBirthDate;
+                        Console.WriteLine("Datum rođenja uspješno promijenjen!");
+                        Wait();
+                        break;
+
+                    case "0":
+                        EditingInterface();
+                        break;
+
+                    default:
+                        Console.WriteLine("Neispravan unos!");
+                        Wait();
+                        break;
 
 
-            AddUser(firstName, lastName, birthDate);
 
-            Console.WriteLine("Korisnik uspješno dodan!");
-            return;
+
+                }
+
+            }
         }
 
-
-        static void Wait()
+            static void Wait()
         {
             Console.WriteLine("\nPritisnite ENTER za nastavak...");
             Console.ReadLine();
+
         }
     }
 }
