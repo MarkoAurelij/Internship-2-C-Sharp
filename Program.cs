@@ -123,11 +123,11 @@ namespace FuelTracker
                         break;
 
                     case "4":
-                        Wait();
+                        TravelsListMenu();
                         break;
 
                     case "5":
-                        Wait();
+                        ReportsMenu();
                         break;
 
                     case "0":
@@ -487,7 +487,7 @@ namespace FuelTracker
                         string newSurname = Console.ReadLine();
                         if (!string.IsNullOrWhiteSpace(newSurname))
                         {
-                            user["lastname"] = newSurname;
+                            user["lastName"] = newSurname;
                             Console.WriteLine("Ime je uspješno promijenjeno!");
                         }
                         else
@@ -672,7 +672,6 @@ namespace FuelTracker
                 return;
             }
 
-
             Console.Write("Datum putovanja (YYYY-MM-DD): ");
             string dateInput = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(dateInput)) return;
@@ -686,7 +685,7 @@ namespace FuelTracker
             Console.Write("Kilometraža: ");
             string kmInput = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(kmInput)) return;
-            if (!double.TryParse(kmInput, out double km) || km <= 0)
+            if (!double.TryParse(kmInput, out double distance) || distance <= 0)
             {
                 Console.WriteLine("Neispravna kilometraža!");
                 Wait();
@@ -696,7 +695,7 @@ namespace FuelTracker
             Console.Write("Potrošeno gorivo (L): ");
             string fuelInput = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(fuelInput)) return;
-            if (!double.TryParse(fuelInput, out double fuel) || fuel <= 0)
+            if (!double.TryParse(fuelInput, out double fuelAmount) || fuelAmount <= 0)
             {
                 Console.WriteLine("Neispravna količina goriva!");
                 Wait();
@@ -706,28 +705,29 @@ namespace FuelTracker
             Console.Write("Cijena goriva po litri: ");
             string priceInput = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(priceInput)) return;
-            if (!double.TryParse(priceInput, out double price) || price <= 0)
+            if (!double.TryParse(priceInput, out double fuelPrice) || fuelPrice <= 0)
             {
                 Console.WriteLine("Neispravna cijena!");
                 Wait();
                 return;
             }
 
-            double totalCost = fuel * price;
+            double totalCost = fuelAmount * fuelPrice;
 
             var travel = new Dictionary<string, object>();
             travel["id"] = ID_assigner_Travels++;
             travel["date"] = date;
-            travel["km"] = km;
-            travel["fuel"] = fuel;
-            travel["price"] = price;
+            travel["distance"] = distance;
+            travel["fuelAmount"] = fuelAmount;
+            travel["fuelPrice"] = fuelPrice;
             travel["totalCost"] = totalCost;
 
             ((List<Dictionary<string, object>>)user["travels"]).Add(travel);
 
-            Console.WriteLine($"Putovanje uspješno dodano! Ukupni trošak: {totalCost:F2} HRK");
+            Console.WriteLine($"Putovanje uspješno dodano! Ukupni trošak: {totalCost:F2} EUR");
             Wait();
         }
+
         static void DeleteTravel()
         {
             while (true)
@@ -934,7 +934,7 @@ namespace FuelTracker
                     travel["fuelAmount"] = newFuel;
                 }
 
-                Console.Write($"Cijena goriva po litri ({travel["fuelPrice"]} HRK): ");
+                Console.Write($"Cijena goriva po litri ({travel["fuelPrice"]} EUR): ");
                 string priceInput = Console.ReadLine();
                 if (!string.IsNullOrWhiteSpace(priceInput))
                 {
@@ -949,16 +949,383 @@ namespace FuelTracker
 
                 travel["totalCost"] = (double)travel["fuelAmount"] * (double)travel["fuelPrice"];
 
-                Console.WriteLine($"\nPutovanje uspješno uređeno! Novi ukupni trošak: {travel["totalCost"]:F2} HRK");
+                Console.WriteLine($"\nPutovanje uspješno uređeno! Novi ukupni trošak: {travel["totalCost"]:F2} EUR");
                 Wait();
                 return;
             }
+        }
+
+        static void TravelsListMenu()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("Pregled svih putovanja:");
+                Console.WriteLine("1 - Sva putovanja redom kako su spremljena");
+                Console.WriteLine("2 - Sva putovanja sortirana po trošku uzlazno");
+                Console.WriteLine("3 - Sva putovanja sortirana po trošku silazno");
+                Console.WriteLine("4 - Sva putovanja sortirana po kilometraži uzlazno");
+                Console.WriteLine("5 - Sva putovanja sortirana po kilometraži silazno");
+                Console.WriteLine("6 - Sva putovanja sortirana po datumu uzlazno");
+                Console.WriteLine("7 - Sva putovanja sortirana po datumu silazno");
+                Console.WriteLine("0 - Povratak na Putovanja menu");
+                Console.Write("Odabir: ");
+
+                string choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1": PrintTravelsOriginalOrder(); break;
+                    case "2": PrintTravelsByTotalCostAscending(); break;
+                    case "3": PrintTravelsByTotalCostDescending(); break;
+                    case "4": PrintTravelsByDistanceAscending(); break;
+                    case "5": PrintTravelsByDistanceDescending(); break;
+                    case "6": PrintTravelsByDateAscending(); break;
+                    case "7": PrintTravelsByDateDescending(); break;
+                    case "0": return;
+                    default:
+                        Console.WriteLine("Neispravan unos!");
+                        Wait();
+                        break;
+                }
+            }
+        }
+
+        static List<(Dictionary<string, object> Travel, Dictionary<string, object> User)> GetAllTravelsWithUsers()
+        {
+            return users.SelectMany(u =>
+                ((List<Dictionary<string, object>>)u["travels"])
+                    .Select(t => (Travel: t, User: u))
+            ).ToList();
+        }
+
+        static void PrintTravelsOriginalOrder()
+        {
+            Console.Clear();
+            Console.WriteLine("Sva putovanja redom kako su spremljena:\n");
+
+            var allTravels = GetAllTravelsWithUsers();
+            foreach (var x in allTravels)
+                PrintTravelEntry(x.Travel, x.User);
+
+            Wait();
+        }
+
+        static void PrintTravelsByTotalCostAscending()
+        {
+            Console.Clear();
+            Console.WriteLine("Sva putovanja sortirana po trošku (uzlazno):\n");
+
+            var allTravels = GetAllTravelsWithUsers()
+                .OrderBy(x => (double)x.Travel["totalCost"]);
+
+            foreach (var x in allTravels)
+                PrintTravelEntry(x.Travel, x.User);
+
+            Wait();
+        }
+
+        static void PrintTravelsByTotalCostDescending()
+        {
+            Console.Clear();
+            Console.WriteLine("Sva putovanja sortirana po trošku (silazno):\n");
+
+            var allTravels = GetAllTravelsWithUsers()
+                .OrderByDescending(x => (double)x.Travel["totalCost"]);
+
+            foreach (var x in allTravels)
+                PrintTravelEntry(x.Travel, x.User);
+
+            Wait();
+        }
+
+        static void PrintTravelsByDistanceAscending()
+        {
+            Console.Clear();
+            Console.WriteLine("Sva putovanja sortirana po kilometraži (uzlazno):\n");
+
+            var allTravels = GetAllTravelsWithUsers()
+                .OrderBy(x => (double)x.Travel["distance"]);
+
+            foreach (var x in allTravels)
+                PrintTravelEntry(x.Travel, x.User);
+
+            Wait();
+        }
+
+        static void PrintTravelsByDistanceDescending()
+        {
+            Console.Clear();
+            Console.WriteLine("Sva putovanja sortirana po kilometraži (silazno):\n");
+
+            var allTravels = GetAllTravelsWithUsers()
+                .OrderByDescending(x => (double)x.Travel["distance"]);
+
+            foreach (var x in allTravels)
+                PrintTravelEntry(x.Travel, x.User);
+
+            Wait();
+        }
+
+        static void PrintTravelsByDateAscending()
+        {
+            Console.Clear();
+            Console.WriteLine("Sva putovanja sortirana po datumu (uzlazno):\n");
+
+            var allTravels = GetAllTravelsWithUsers()
+                .OrderBy(x => (DateTime)x.Travel["date"]);
+
+            foreach (var x in allTravels)
+                PrintTravelEntry(x.Travel, x.User);
+
+            Wait();
+        }
+
+        static void PrintTravelsByDateDescending()
+        {
+            Console.Clear();
+            Console.WriteLine("Sva putovanja sortirana po datumu (silazno):\n");
+
+            var allTravels = GetAllTravelsWithUsers()
+                .OrderByDescending(x => (DateTime)x.Travel["date"]);
+
+            foreach (var x in allTravels)
+                PrintTravelEntry(x.Travel, x.User);
+
+            Wait();
+        }
+
+
+
+        static void PrintTravelEntry(Dictionary<string, object> travel, Dictionary<string, object> user)
+        {
+            Console.WriteLine(
+                $"ID: {travel["id"]} | Korisnik: {user["firstName"]} {user["lastName"]} | Datum: {((DateTime)travel["date"]).ToString("yyyy-MM-dd")} | " +
+                $"Km: {travel["distance"]} | Gorivo: {travel["fuelAmount"]} L | Cijena/L: {travel["fuelPrice"]} EUR | Trošak: {travel["totalCost"]:F2} EUR"
+            );
+        }
+
+        static void ReportsMenu()
+        {
+            var user = SelectUserByIdOrName();
+            if (user == null) return;
+
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine($"Izvještaji za: {user["firstName"]} {user["lastName"]}");
+                Console.WriteLine("1 - Ukupna potrošnja goriva (L)");
+                Console.WriteLine("2 - Ukupni troškovi goriva (EUR)");
+                Console.WriteLine("3 - Prosječna potrošnja u L/100km");
+                Console.WriteLine("4 - Putovanje s najvećom potrošnjom goriva");
+                Console.WriteLine("5 - Pregled putovanja po datumu");
+                Console.WriteLine("0 - Povratak");
+                Console.Write("Odabir: ");
+
+                string choice = Console.ReadLine();
+                switch (choice)
+                {
+                    case "1":
+                        ReportTotalFuel(user); 
+                        break;
+
+                    case "2": 
+                        ReportTotalCost(user); 
+                        break;
+
+                    case "3": 
+                        ReportAvgFuelConsumption(user); 
+                        break;
+
+                    case "4": 
+                        ReportMaxFuelTravel(user); 
+                        break;
+
+                    case "5": 
+                        ReportTravelByDate(user); 
+                        break;
+
+                    case "0": 
+                        return;
+                    default: Console.WriteLine("Neispravan unos!"); Wait(); break;
+                }
+            }
+        }
+        static Dictionary<string, object> SelectUserByIdOrName()
+        {
+            Console.Clear();
+            Console.Write("Unesite ID ili ime/prezime korisnika: ");
+            string input = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.WriteLine("Niste unijeli ništa!");
+                Wait();
+                return null;
+            }
+
+            if (int.TryParse(input, out int id))
+            {
+                var userById = users.Find(u => (int)u["id"] == id);
+                if (userById != null) return userById;
+
+                Console.WriteLine($"Korisnik s ID {id} ne postoji.");
+                Wait();
+                return null;
+            }
+
+            var matchedUsers = users.FindAll(u =>
+                u["firstName"].ToString().Equals(input, StringComparison.OrdinalIgnoreCase) ||
+                u["lastName"].ToString().Equals(input, StringComparison.OrdinalIgnoreCase)
+            );
+
+            if (matchedUsers.Count == 0)
+            {
+                Console.WriteLine("Korisnik s tim imenom/prezimom ne postoji.");
+                Wait();
+                return null;
+            }
+
+            if (matchedUsers.Count > 1)
+            {
+                Console.WriteLine("Pronađeno više korisnika:");
+                foreach (var u in matchedUsers)
+                {
+                    Console.WriteLine($"ID: {u["id"]} | {u["firstName"]} {u["lastName"]}");
+                }
+                Console.Write("Unesite ID željenog korisnika: ");
+                string idInput = Console.ReadLine();
+                if (int.TryParse(idInput, out int chosenId))
+                {
+                    var selected = matchedUsers.Find(u => (int)u["id"] == chosenId);
+                    if (selected != null) return selected;
+                }
+                Console.WriteLine("Neispravan odabir!");
+                Wait();
+                return null;
+            }
+
+            return matchedUsers[0];
         }
 
 
 
 
 
+
+        static void ReportTotalFuel(Dictionary<string, object> user)
+        {
+            Console.Clear();
+            Console.WriteLine("UKUPNA POTROŠNJA GORIVA\n");
+
+            var travels = (List<Dictionary<string, object>>)user["travels"];
+
+            double totalFuel = travels.Sum(t => (double)t["fuelAmount"]);
+
+            Console.WriteLine($"Korisnik: {user["firstName"]} {user["lastName"]}");
+            Console.WriteLine($"Ukupno goriva: {totalFuel} L");
+
+            Wait();
+        }
+
+        static void ReportTotalCost(Dictionary<string, object> user)
+        {
+            Console.Clear();
+            Console.WriteLine("UKUPNI TROŠKOVI GORIVA\n");
+
+            var travels = (List<Dictionary<string, object>>)user["travels"];
+
+            double totalCost = travels.Sum(t => (double)t["totalCost"]);
+
+            Console.WriteLine($"Korisnik: {user["firstName"]} {user["lastName"]}");
+            Console.WriteLine($"Ukupni trošak: {totalCost:F2} EUR");
+
+            Wait();
+        }
+
+        static void ReportAvgFuelConsumption(Dictionary<string, object> user)
+        {
+            Console.Clear();
+            Console.WriteLine("PROSJEČNA POTROŠNJA L/100km\n");
+
+            var travels = (List<Dictionary<string, object>>)user["travels"];
+
+            double totalFuel = travels.Sum(t => (double)t["fuelAmount"]);
+            double totalKm = travels.Sum(t => (double)t["distance"]);
+
+            if (totalKm == 0)
+            {
+                Console.WriteLine("Nema dovoljno podataka (0 km).");
+                Wait();
+                return;
+            }
+
+            double avg = (totalFuel / totalKm) * 100;
+
+            Console.WriteLine($"Ukupno goriva: {totalFuel} L");
+            Console.WriteLine($"Ukupno kilometara: {totalKm} km");
+            Console.WriteLine($"Prosjek: {avg:F2} L/100km");
+
+            Wait();
+        }
+
+        static void ReportMaxFuelTravel(Dictionary<string, object> user)
+        {
+            Console.Clear();
+            Console.WriteLine("PUTOVANJE S NAJVEĆOM POTROŠNJOM GORIVA\n");
+
+            var travels = (List<Dictionary<string, object>>)user["travels"];
+
+            if (travels.Count == 0)
+            {
+                Console.WriteLine("Korisnik nema putovanja.");
+                Wait();
+                return;
+            }
+
+            var maxTravel = travels
+                .OrderByDescending(t => (double)t["fuelAmount"])
+                .First();
+
+            PrintTravelEntry(maxTravel, user);
+
+            Wait();
+        }
+
+        static void ReportTravelByDate(Dictionary<string, object> user)
+        {
+            Console.Clear();
+            Console.Write("Unesite datum (YYYY-MM-DD): ");
+
+            string input = Console.ReadLine();
+
+            if (!DateTime.TryParse(input, out DateTime date))
+            {
+                Console.WriteLine("Neispravan datum!");
+                Wait();
+                return;
+            }
+
+            var travels = (List<Dictionary<string, object>>)user["travels"];
+
+            var result = travels.Where(t =>
+                ((DateTime)t["date"]).Date == date.Date
+            ).ToList();
+
+            Console.WriteLine($"\nPutovanja na datum {date:yyyy-MM-dd}:\n");
+
+            if (!result.Any())
+            {
+                Console.WriteLine("Nema putovanja na taj datum.");
+            }
+            else
+            {
+                foreach (var t in result)
+                    PrintTravelEntry(t, user);
+            }
+
+            Wait();
+        }
 
 
 
