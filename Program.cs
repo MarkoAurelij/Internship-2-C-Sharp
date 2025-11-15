@@ -99,7 +99,7 @@ namespace FuelTracker
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("KORISNICI");
+                Console.WriteLine("Korisnici");
                 Console.WriteLine("1 - Unos novog korisnika");
                 Console.WriteLine("2 - Brisanje korisnika");
                 Console.WriteLine("3 - Uređivanje korisnika");
@@ -128,7 +128,7 @@ namespace FuelTracker
 
                     case "4":
                         Console.WriteLine("Otvoren izbornik: Pregled svih korisnika");
-                        Wait();
+                        UserListMenu();
                         break;
 
                     case "0":
@@ -494,12 +494,122 @@ namespace FuelTracker
 
             }
         }
+        static void UserListMenu()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("PREGLED SVIH KORISNIKA");
+                Console.WriteLine("1 - Svi korisnici abecedno po prezimenu");
+                Console.WriteLine("2 - Svi korisnici stariji od 20 godina");
+                Console.WriteLine("3 - Svi korisnici s barem 2 putovanja");
+                Console.WriteLine("0 - Povratak");
+                Console.Write("Odabir: ");
 
-            static void Wait()
+                string choice = Console.ReadLine();
+                switch (choice)
+                {
+                    case "1":
+                        PrintUsersAphabetically();
+                        break;
+                    case "2":
+                        PrintUsersOlderThan20();
+                        break;
+                    case "3":
+                        PrintUsersWithTwoTravels();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("Neispravan unos!");
+                        Wait();
+                        break;
+                }
+            }
+        }
+
+        static void PrintUsersAphabetically()
+        {
+            Console.Clear();
+            Console.WriteLine("Svi korisnici izlistani (abecedno po prezimenu):\n");
+
+            var sorted = users.OrderBy(u => (string)u["lastName"]).ToList();
+
+            foreach (var user in sorted)
+            {
+                Console.WriteLine($"{user["id"]}. {user["firstName"]} {user["lastName"]} - Rođen: {((DateTime)user["birthDate"]).ToString("yyyy-MM-dd")}");
+            }
+
+            Wait();
+        }
+
+        static void PrintUsersOlderThan20()
+        {
+            Console.Clear();
+            Console.WriteLine("KORISNICI STARIJI OD 20 GODINA:\n");
+
+            var list = users.Where(u =>
+            {
+                DateTime birth = (DateTime)u["birthDate"];
+                int age = DateTime.Now.Year - birth.Year;
+                if (birth > DateTime.Now.AddYears(-age)) age--;
+                return age > 20;
+            }).ToList();
+
+            if (list.Count == 0)
+            {
+                Console.WriteLine("Nema korisnika starijih od 20 godina.");
+            }
+            else
+            {
+                foreach (var user in list)
+                {
+                    int age = DateTime.Now.Year - ((DateTime)user["birthDate"]).Year;
+                    if (((DateTime)user["birthDate"]) > DateTime.Now.AddYears(-age)) age--;
+                    Console.WriteLine($"{user["id"]}. {user["firstName"]} {user["lastName"]} - {age} godina");
+                }
+            }
+
+            Wait();
+        }
+
+
+        static void PrintUsersWithTwoTravels()
+        {
+            Console.Clear();
+            Console.WriteLine("Korisnici s barem 2 putovanja:\n");
+
+            var list = users.Where(u =>
+            {
+                var travels = (List<Dictionary<string, object>>)u["travels"];
+                return travels.Count >= 2;
+            }).ToList(); 
+
+            if (list.Count == 0)
+            {
+                Console.WriteLine("Nema korisnika s 2 ili više putovanja.");
+            }
+            else
+            {
+                foreach (var user in list)
+                {
+                    var travels = (List<Dictionary<string, object>>)user["travels"];
+                    Console.WriteLine($"{user["id"]}. {user["firstName"]} {user["lastName"]} - Putovanja: {travels.Count}");
+                }
+            }
+
+            Wait();
+        }
+
+
+
+        static void Wait()
         {
             Console.WriteLine("\nPritisnite ENTER za nastavak...");
             Console.ReadLine();
 
         }
+
+        
     }
 }
