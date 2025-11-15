@@ -53,7 +53,7 @@ namespace FuelTracker
             user["firstName"] = firstName;
             user["lastName"] = lastName;
             user["birthDate"] = birthDate;
-            user["travels"] = new List<Dictionary<string, object>>(); // initialize travel list
+            user["travels"] = new List<Dictionary<string, object>>(); 
 
             users.Add(user);
         }
@@ -78,8 +78,7 @@ namespace FuelTracker
                         break;
 
                     case "2":
-                        Console.WriteLine("Otvoren izbornik: Putovanja");
-                        Wait();
+                        TravelsMenu();
                         break;
 
                     case "0":
@@ -90,6 +89,55 @@ namespace FuelTracker
                         Console.WriteLine("Neispravan unos!");
                         Wait();
                         break;
+                }
+            }
+        }
+        static void TravelsMenu()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("Putovanja");
+                Console.WriteLine("1 - Unos novog putovanja");
+                Console.WriteLine("2 - Brisanje putovanja");
+                Console.WriteLine("3 - Uređivanje putovanja");
+                Console.WriteLine("4 - Pregled svih putovanja");
+                Console.WriteLine("5 - Izvještaji i analize");
+                Console.WriteLine("0 - povratak na glavni izbornik");
+                Console.WriteLine("Odabir: ");
+
+                string choice = Console.ReadLine();
+
+                switch(choice)
+                {
+                    case "1":
+                        AddTravel();
+                        break;
+
+                    case "2":
+                        DeleteTravel();
+                        break;
+
+                    case "3":
+                        EditTravelById();
+                        break;
+
+                    case "4":
+                        Wait();
+                        break;
+
+                    case "5":
+                        Wait();
+                        break;
+
+                    case "0":
+                        return;
+
+                    default:
+                        Console.WriteLine("Neispravan unos!");
+                        Wait();
+                        break;
+
                 }
             }
         }
@@ -147,7 +195,7 @@ namespace FuelTracker
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("UNESI NOVOG KORISNIKA");
+                Console.WriteLine("Unesi novog korisnika:");
 
                 Console.Write("Unesite ime: ");
                 string firstName = Console.ReadLine();
@@ -601,6 +649,317 @@ namespace FuelTracker
             Wait();
         }
 
+        static void AddTravel()
+        {
+            Console.Clear();
+            Console.WriteLine("Unos novog putovanja");
+            Console.Write("Unesite ID korisnika kojem se dodaje putovanje: ");
+            string userInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(userInput)) return;
+
+            if (!int.TryParse(userInput, out int userId))
+            {
+                Console.WriteLine("Neispravan ID!");
+                Wait();
+                return;
+            }
+
+            var user = users.Find(u => (int)u["id"] == userId);
+            if (user == null)
+            {
+                Console.WriteLine("Korisnik ne postoji!");
+                Wait();
+                return;
+            }
+
+
+            Console.Write("Datum putovanja (YYYY-MM-DD): ");
+            string dateInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(dateInput)) return;
+            if (!DateTime.TryParse(dateInput, out DateTime date))
+            {
+                Console.WriteLine("Neispravan datum!");
+                Wait();
+                return;
+            }
+
+            Console.Write("Kilometraža: ");
+            string kmInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(kmInput)) return;
+            if (!double.TryParse(kmInput, out double km) || km <= 0)
+            {
+                Console.WriteLine("Neispravna kilometraža!");
+                Wait();
+                return;
+            }
+
+            Console.Write("Potrošeno gorivo (L): ");
+            string fuelInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(fuelInput)) return;
+            if (!double.TryParse(fuelInput, out double fuel) || fuel <= 0)
+            {
+                Console.WriteLine("Neispravna količina goriva!");
+                Wait();
+                return;
+            }
+
+            Console.Write("Cijena goriva po litri: ");
+            string priceInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(priceInput)) return;
+            if (!double.TryParse(priceInput, out double price) || price <= 0)
+            {
+                Console.WriteLine("Neispravna cijena!");
+                Wait();
+                return;
+            }
+
+            double totalCost = fuel * price;
+
+            var travel = new Dictionary<string, object>();
+            travel["id"] = ID_assigner_Travels++;
+            travel["date"] = date;
+            travel["km"] = km;
+            travel["fuel"] = fuel;
+            travel["price"] = price;
+            travel["totalCost"] = totalCost;
+
+            ((List<Dictionary<string, object>>)user["travels"]).Add(travel);
+
+            Console.WriteLine($"Putovanje uspješno dodano! Ukupni trošak: {totalCost:F2} HRK");
+            Wait();
+        }
+        static void DeleteTravel()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("Brisanje putovanja:");
+                Console.WriteLine("1 - brisanje po ID-u");
+                Console.WriteLine("2 - brisanje putovanja skupljih od unesenog iznosa");
+                Console.WriteLine("3 - brisanje putovanja jeftinijih od unesenog iznosa");
+                Console.WriteLine("0 - Povratak");
+                Console.Write("Odabir: ");
+
+                string choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        DeleteTravelById();
+                        break;
+
+                    case "2":
+                        DeleteTravelsMoreExpensiveThan();
+                        break;
+
+                    case "3":
+                        DeleteTravelsCheaperThan();
+                        break;
+
+                    case "0":
+                        return; 
+
+                    default:
+                        Console.WriteLine("Neispravan unos!");
+                        Wait();
+                        break;
+                }
+            }
+        }
+
+        static void DeleteTravelById()
+        {
+            Console.Clear();
+            Console.WriteLine("Brisanje putovanja po ID-u");
+
+            Console.Write("Unesite ID putovanja: ");
+            string input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input)) return;
+
+            if (!int.TryParse(input, out int travelId))
+            {
+                Console.WriteLine("Neispravan ID!");
+                Wait();
+                return;
+            }
+
+            bool found = false;
+            foreach (var user in users)
+            {
+                var travels = (List<Dictionary<string, object>>)user["travels"];
+                var travel = travels.Find(t => (int)t["id"] == travelId);
+                if (travel != null)
+                {
+                    travels.Remove(travel);
+                    Console.WriteLine("Putovanje uspješno izbrisano!");
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                Console.WriteLine("Putovanje s tim ID-em ne postoji.");
+
+            Wait();
+        }
+
+        static void DeleteTravelsMoreExpensiveThan()
+        {
+            Console.Clear();
+            Console.WriteLine("Brisanje putovanja skupljih od unesenog iznosa:");
+            Console.Write("Unesite minimalni iznos: ");
+            string input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input)) return;
+
+            if (!double.TryParse(input, out double minPrice) || minPrice < 0)
+            {
+                Console.WriteLine("Neispravan iznos!");
+                Wait();
+                return;
+            }
+
+            int removedCount = 0;
+            foreach (var user in users)
+            {
+                var travels = (List<Dictionary<string, object>>)user["travels"];
+                removedCount += travels.RemoveAll(t => (double)t["totalCost"] > minPrice);
+            }
+
+            Console.WriteLine($"{removedCount} putovanja izbrisano.");
+            Wait();
+        }
+
+        static void DeleteTravelsCheaperThan()
+        {
+            Console.Clear();
+            Console.WriteLine("Brisanje putovanja jeftinijih od unesenog iznosa:");
+            Console.Write("Unesite maksimalni iznos: ");
+            string input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input)) return;
+
+            if (!double.TryParse(input, out double maxPrice) || maxPrice < 0)
+            {
+                Console.WriteLine("Neispravan iznos!");
+                Wait();
+                return;
+            }
+
+            int removedCount = 0;
+            foreach (var user in users)
+            {
+                var travels = (List<Dictionary<string, object>>)user["travels"];
+                removedCount += travels.RemoveAll(t => (double)t["totalCost"] < maxPrice);
+            }
+
+            Console.WriteLine($"{removedCount} putovanja izbrisano.");
+            Wait();
+        }
+
+        static void EditTravelById()
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("Uređivanje putovanja po ID-u");
+                Console.Write("Unesite ID putovanja za uređivanje: ");
+                string input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input)) return;
+
+                if (!int.TryParse(input, out int travelId))
+                {
+                    Console.WriteLine("Neispravan ID!");
+                    Wait();
+                    continue;
+                }
+
+                Dictionary<string, object> travel = null;
+                Dictionary<string, object> travelUser = null;
+
+                foreach (var user in users)
+                {
+                    var travels = (List<Dictionary<string, object>>)user["travels"];
+                    travel = travels.Find(t => (int)t["id"] == travelId);
+                    if (travel != null)
+                    {
+                        travelUser = user;
+                        break;
+                    }
+                }
+
+                if (travel == null)
+                {
+                    Console.WriteLine("Putovanje s tim ID-em ne postoji!");
+                    Wait();
+                    continue;
+                }
+
+                Console.WriteLine("\nPritisnite ENTER za zadržavanje trenutne vrijednosti.\n");
+
+                Console.Write($"Datum putovanja ({((DateTime)travel["date"]).ToString("yyyy-MM-dd")}): ");
+                string dateInput = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(dateInput))
+                {
+                    if (!DateTime.TryParse(dateInput, out DateTime newDate))
+                    {
+                        Console.WriteLine("Neispravan datum!");
+                        Wait();
+                        continue;
+                    }
+                    travel["date"] = newDate;
+                }
+
+                Console.Write($"Kilometraža ({travel["distance"]} km): ");
+                string kmInput = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(kmInput))
+                {
+                    if (!double.TryParse(kmInput, out double newDistance) || newDistance <= 0)
+                    {
+                        Console.WriteLine("Neispravna kilometraža!");
+                        Wait();
+                        continue;
+                    }
+                    travel["distance"] = newDistance;
+                }
+
+                Console.Write($"Potrošeno gorivo ({travel["fuelAmount"]} L): ");
+                string fuelInput = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(fuelInput))
+                {
+                    if (!double.TryParse(fuelInput, out double newFuel) || newFuel <= 0)
+                    {
+                        Console.WriteLine("Neispravna količina goriva!");
+                        Wait();
+                        continue;
+                    }
+                    travel["fuelAmount"] = newFuel;
+                }
+
+                Console.Write($"Cijena goriva po litri ({travel["fuelPrice"]} HRK): ");
+                string priceInput = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(priceInput))
+                {
+                    if (!double.TryParse(priceInput, out double newPrice) || newPrice <= 0)
+                    {
+                        Console.WriteLine("Neispravna cijena!");
+                        Wait();
+                        continue;
+                    }
+                    travel["fuelPrice"] = newPrice;
+                }
+
+                travel["totalCost"] = (double)travel["fuelAmount"] * (double)travel["fuelPrice"];
+
+                Console.WriteLine($"\nPutovanje uspješno uređeno! Novi ukupni trošak: {travel["totalCost"]:F2} HRK");
+                Wait();
+                return;
+            }
+        }
+
+
+
+
+
+
 
 
         static void Wait()
@@ -609,6 +968,8 @@ namespace FuelTracker
             Console.ReadLine();
 
         }
+
+
 
         
     }
